@@ -10,7 +10,7 @@
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            overscroll-behavior-y: contain;
+            overscroll-behavior-y: contain; /* Prevents pull-to-refresh on mobile when scrolling playlist */
         }
         ::-webkit-scrollbar {
             width: 6px;
@@ -38,22 +38,65 @@
             width: 24px;
             height: 24px;
             animation: spin 1s linear infinite;
-            display: none;
+            display: none; /* Initially hidden */
         }
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-        /* Ensure album art image fills its container without distortion */
         #albumArt {
-            object-fit: cover; /* Cover the area, cropping if necessary */
+            object-fit: cover;
             width: 100%;
             height: 100%;
         }
-        /* Style for the album art container when showing default icon */
         #albumArtDefaultContainer {
-            background-color: #e0e7ff; /* Light indigo background for default */
+            background-color: #e0e7ff; 
         }
+
+        /* 音符容器和音符样式 */
+        #notesContainer {
+            opacity: 0; /* Initially hidden, controlled by JS */
+            visibility: hidden; /* Initially hidden */
+            transition: opacity 0.3s ease, left 0.1s linear, visibility 0.3s ease; /* Smooth transitions */
+            z-index: 10; /* Ensure notes are above the progress bar */
+        }
+
+        .music-note-icon {
+            font-size: 14px; /* 音符大小调整为更小 */
+            margin: 0 1.5px;  /* 音符间距调整 */
+            animation-name: jump;
+            animation-duration: 0.9s; /* 动画持续时间微调 */
+            animation-timing-function: ease-in-out;
+            animation-iteration-count: infinite;
+            transform-origin: bottom; /* 从底部开始动画 */
+            display: inline-block;
+        }
+
+        @keyframes jump {
+            0%, 100% {
+                transform: translateY(0) scale(1) rotate(0deg);
+                opacity: 0.6;
+            }
+            25% {
+                transform: translateY(-8px) scale(1.05) rotate(-7deg); /* 跳跃高度和旋转调整 */
+                opacity: 0.8;
+            }
+            50% {
+                transform: translateY(-15px) scale(1.15) rotate(0deg); /* 跳得更高，缩放调整 */
+                opacity: 1;
+            }
+            75% {
+                transform: translateY(-8px) scale(1.05) rotate(7deg); /* 跳跃高度和旋转调整 */
+                opacity: 0.8;
+            }
+        }
+
+        /* 4个音符的颜色和动画延迟 */
+        .music-note-icon:nth-child(1) { color: #3b82f6; animation-delay: 0s; }    /* Tailwind blue-500 */
+        .music-note-icon:nth-child(2) { color: #ef4444; animation-delay: 0.2s; } /* Tailwind red-500 */
+        .music-note-icon:nth-child(3) { color: #22c55e; animation-delay: 0.4s; }  /* Tailwind green-500 */
+        .music-note-icon:nth-child(4) { color: #eab308; animation-delay: 0.6s; } /* Tailwind yellow-500 */
+
     </style>
 </head>
 <body class="bg-gradient-to-br from-sky-200 to-indigo-300 text-slate-800 flex flex-col items-center justify-center min-h-screen p-4 selection:bg-sky-500 selection:text-white">
@@ -70,10 +113,13 @@
             </div>
             <div>
                 <h2 id="songTitle" class="text-2xl font-semibold text-center truncate text-slate-700" title="歌曲名称">歌曲名称</h2>
-                </div>
+            </div>
         </div>
 
-        <div class="px-6 space-y-2">
+        <div class="px-6 space-y-2 relative">
+            <div id="notesContainer" class="absolute pointer-events-none flex items-end" style="height: 30px; bottom: 26px;"> {/* 高度和底部位置微调 */}
+                {/* 音符将由 JavaScript 在此创建 */}
+            </div>
             <input type="range" id="progressBar" value="0" class="w-full h-2 bg-slate-300 rounded-lg appearance-none cursor-pointer accent-sky-500">
             <div class="flex justify-between text-xs text-slate-500">
                 <span id="currentTime">0:00</span>
@@ -104,7 +150,8 @@
         </div>
         
         <div id="playlistContainer" class="h-40 overflow-y-auto bg-white/30">
-            </div>
+            {/* 播放列表项将由 JavaScript 在此创建 */}
+        </div>
          <div class="flex justify-center py-3">
             <div id="loadingIndicator" class="loader"></div>
         </div>
@@ -113,9 +160,8 @@
     <script>
         const audioPlayer = document.getElementById('audioPlayer');
         const albumArtDefaultContainer = document.getElementById('albumArtDefaultContainer');
-        const albumArt = document.getElementById('albumArt'); // The img tag
+        const albumArt = document.getElementById('albumArt');
         const songTitle = document.getElementById('songTitle');
-        // songArtist element removed
         const progressBar = document.getElementById('progressBar');
         const currentTimeDisplay = document.getElementById('currentTime');
         const totalDurationDisplay = document.getElementById('totalDuration');
@@ -126,6 +172,7 @@
         const volumeControl = document.getElementById('volumeControl');
         const playlistContainer = document.getElementById('playlistContainer');
         const loadingIndicator = document.getElementById('loadingIndicator');
+        const notesContainer = document.getElementById('notesContainer'); // 获取音符容器
 
         // --- 歌曲数据 ---
         // artist property removed.
@@ -162,23 +209,74 @@
         let currentSongIndex = 0;
         let isPlaying = false;
 
+        // 创建音符元素
+        function createMusicalNotes() {
+            const numNotes = 4; // 创建4个音符
+            notesContainer.innerHTML = ''; // 清空旧音符（如果需要重新创建）
+            for (let i = 0; i < numNotes; i++) {
+                const noteEl = document.createElement('i');
+                noteEl.classList.add('fas', 'fa-music', 'music-note-icon');
+                // CSS :nth-child 会处理颜色和动画延迟
+                notesContainer.appendChild(noteEl);
+            }
+        }
+
+        // 更新音符位置和可见性
+        function updateNotesPosition() {
+            if (!audioPlayer.duration || audioPlayer.duration <= 0) {
+                notesContainer.style.opacity = '0';
+                notesContainer.style.visibility = 'hidden';
+                return;
+            }
+
+            if (isPlaying) {
+                notesContainer.style.opacity = '1';
+                notesContainer.style.visibility = 'visible';
+            } else {
+                notesContainer.style.opacity = '0';
+                notesContainer.style.visibility = 'hidden';
+            }
+
+            const progressPercent = (progressBar.value / progressBar.max);
+            const progressBarWidth = progressBar.offsetWidth;
+            const notesContainerWidth = notesContainer.offsetWidth;
+
+            let thumbCenterRelativeToProgressBarStart = progressPercent * progressBarWidth;
+            let newLeft = thumbCenterRelativeToProgressBarStart - (notesContainerWidth / 2);
+
+            // 限制音符容器在进度条范围内
+            newLeft = Math.max(0, Math.min(newLeft, progressBarWidth - notesContainerWidth));
+            
+            notesContainer.style.left = `${newLeft}px`;
+        }
+
+
         function loadSong(songIndex) {
             if (songIndex < 0 || songIndex >= songs.length) return;
             
-            loadingIndicator.style.display = 'block';
+            loadingIndicator.style.display = 'block'; // 显示加载指示器
+            albumArt.classList.add('hidden'); // 隐藏旧封面
+            albumArtDefaultContainer.classList.remove('hidden'); // 显示默认图标
+
             const song = songs[songIndex];
             currentSongIndex = songIndex;
             
             songTitle.textContent = song.title;
             songTitle.title = song.title; 
 
-            // Handle Album Art
             if (song.albumArt && song.albumArt.trim() !== "" && song.albumArt !== "NO_ART") {
                 albumArt.src = song.albumArt;
-                albumArt.classList.remove('hidden');
-                albumArtDefaultContainer.classList.add('hidden');
+                albumArt.onload = () => { // 确保图片加载后再显示
+                    albumArt.classList.remove('hidden');
+                    albumArtDefaultContainer.classList.add('hidden');
+                }
+                albumArt.onerror = () => { // 图片加载失败处理
+                    albumArt.classList.add('hidden');
+                    albumArtDefaultContainer.classList.remove('hidden');
+                     console.warn("Album art failed to load: " + song.albumArt);
+                }
             } else {
-                albumArt.src = ""; // Clear src if any
+                albumArt.src = ""; 
                 albumArt.classList.add('hidden');
                 albumArtDefaultContainer.classList.remove('hidden');
             }
@@ -189,39 +287,61 @@
             audioPlayer.onloadedmetadata = () => {
                 totalDurationDisplay.textContent = formatTime(audioPlayer.duration);
                 progressBar.max = audioPlayer.duration;
+                progressBar.value = 0; // 重置进度条
+                currentTimeDisplay.textContent = formatTime(0);
                 loadingIndicator.style.display = 'none'; 
+                updateNotesPosition(); // 更新音符初始位置和状态
                 if (isPlaying) { 
-                    playSong();
+                    playSong(); // 如果之前是播放状态，则自动播放新歌
                 }
             };
             audioPlayer.onerror = () => {
                 loadingIndicator.style.display = 'none';
-                playlistContainer.innerHTML = '<p class="text-red-500 p-4 text-center">错误：无法加载歌曲。</p>';
+                // 避免覆盖整个播放列表，可以在特定区域显示错误
+                const errorMsg = document.createElement('p');
+                errorMsg.className = 'text-red-500 p-2 text-center text-xs';
+                errorMsg.textContent = `错误: 无法加载歌曲 "${song.title}"`;
+                // 简单地在播放列表顶部插入错误
+                if(playlistContainer.firstChild && playlistContainer.firstChild.textContent.startsWith("错误:")) {
+                    playlistContainer.firstChild.remove(); // 移除旧的错误信息
+                }
+                playlistContainer.insertBefore(errorMsg, playlistContainer.firstChild);
+                setTimeout(() => { if(errorMsg.parentNode) errorMsg.remove() }, 5000);
                 console.error("Error loading song: " + song.src);
+                // 尝试播放下一首，或者停止
+                if (songs.length > 1) { 
+                    // nextSong(); // 自动跳到下一首可能会导致循环错误，用户手动操作更好
+                } else {
+                    pauseSong(); // 停止播放
+                    songTitle.textContent = "加载失败";
+                }
             }
         }
 
         function playSong() {
             isPlaying = true;
-            audioPlayer.play().catch(error => {
-                console.error("播放错误:", error);
-                isPlaying = false; 
-                playPauseIcon.classList.remove('fa-pause');
-                playPauseIcon.classList.add('fa-play');
-                const errorMsg = document.createElement('p');
-                errorMsg.className = 'text-red-500 p-4 text-center';
-                errorMsg.textContent = `播放失败: ${error.message}`;
-                // Insert error at the top of the playlist, or a dedicated error area
-                const firstChild = playlistContainer.firstChild;
-                if (firstChild) {
-                    playlistContainer.insertBefore(errorMsg, firstChild);
-                } else {
-                    playlistContainer.appendChild(errorMsg);
-                }
-                setTimeout(() => { if(errorMsg.parentNode) errorMsg.remove() }, 5000);
-            });
-            playPauseIcon.classList.remove('fa-play');
-            playPauseIcon.classList.add('fa-pause');
+            // 确保 audioPlayer.play() 返回的是 Promise
+            const playPromise = audioPlayer.play();
+            if (playPromise !== undefined) {
+                playPromise.then(_ => {
+                    // 播放成功
+                    playPauseIcon.classList.remove('fa-play');
+                    playPauseIcon.classList.add('fa-pause');
+                })
+                .catch(error => {
+                    console.error("播放错误:", error);
+                    isPlaying = false; 
+                    playPauseIcon.classList.remove('fa-pause');
+                    playPauseIcon.classList.add('fa-play');
+                    // 界面提示用户播放失败
+                    const errorMsg = document.createElement('p');
+                    errorMsg.className = 'text-red-500 p-2 text-center text-xs absolute top-0 left-1/2 -translate-x-1/2 bg-white/80 rounded-md shadow-lg';
+                    errorMsg.textContent = `播放失败: 请检查音频文件或网络。`;
+                    document.body.appendChild(errorMsg); // 添加到body，使其在最上层
+                    setTimeout(() => { if(errorMsg.parentNode) errorMsg.remove() }, 3000);
+                });
+            }
+            updateNotesPosition(); // 更新音符状态
         }
 
         function pauseSong() {
@@ -229,13 +349,18 @@
             audioPlayer.pause();
             playPauseIcon.classList.remove('fa-pause');
             playPauseIcon.classList.add('fa-play');
+            updateNotesPosition(); // 更新音符状态
         }
 
         function togglePlayPause() {
-            if (isPlaying) {
-                pauseSong();
-            } else {
-                playSong();
+            if (audioPlayer.src && audioPlayer.src !== window.location.href) { // 检查是否有有效歌曲源
+                 if (isPlaying) {
+                    pauseSong();
+                } else {
+                    playSong();
+                }
+            } else if (songs.length > 0) { // 如果没有有效源但列表有歌，尝试加载第一首
+                loadSong(currentSongIndex); 
             }
         }
 
@@ -253,11 +378,15 @@
             if (audioPlayer.duration) {
                 progressBar.value = audioPlayer.currentTime;
                 currentTimeDisplay.textContent = formatTime(audioPlayer.currentTime);
+                updateNotesPosition(); // 实时更新音符位置
             }
         }
 
         function setProgress(e) {
-            audioPlayer.currentTime = e.target.value;
+            if(audioPlayer.duration) { // 只有在歌曲加载完毕后才允许拖动
+                 audioPlayer.currentTime = e.target.value;
+                 updateNotesPosition(); // 更新音符位置
+            }
         }
 
         function formatTime(seconds) {
@@ -272,14 +401,21 @@
 
         function renderPlaylist() {
             playlistContainer.innerHTML = '';
+            if (songs.length === 0) {
+                playlistContainer.innerHTML = '<p class="text-slate-500 p-4 text-center">播放列表为空。</p>';
+                return;
+            }
             songs.forEach((song, index) => {
                 const div = document.createElement('div');
                 div.classList.add('song-item', 'p-3', 'hover:bg-sky-50', 'cursor-pointer', 'border-b', 'border-slate-200/80', 'text-sm', 'transition-colors', 'truncate');
-                div.textContent = song.title; // Only title
-                div.title = song.title; // Tooltip for truncated titles
+                div.textContent = song.title;
+                div.title = song.title; 
                 
                 div.addEventListener('click', () => {
-                    loadSong(index);
+                    if (currentSongIndex !== index || !isPlaying) {
+                        isPlaying = true; 
+                        loadSong(index);
+                    }
                 });
                 playlistContainer.appendChild(div);
             });
@@ -297,6 +433,7 @@
             });
         }
 
+        // 事件监听器
         playPauseBtn.addEventListener('click', togglePlayPause);
         prevBtn.addEventListener('click', prevSong);
         nextBtn.addEventListener('click', nextSong);
@@ -305,11 +442,27 @@
         progressBar.addEventListener('input', setProgress); 
         volumeControl.addEventListener('input', setVolume);
         
+        // 初始加载
         window.addEventListener('load', () => {
-            loadSong(currentSongIndex);
+            createMusicalNotes(); // 创建音符DOM元素
+            if (songs.length > 0) {
+                loadSong(currentSongIndex); 
+            } else {
+                songTitle.textContent = "播放列表为空";
+                totalDurationDisplay.textContent = "0:00";
+                loadingIndicator.style.display = 'none';
+                updateNotesPosition(); 
+            }
             renderPlaylist();
-            audioPlayer.volume = 0.5; 
+            audioPlayer.volume = parseFloat(volumeControl.value); 
         });
+
+        window.addEventListener('resize', () => {
+            if (audioPlayer.readyState > 0) { 
+                 updateNotesPosition();
+            }
+        });
+
     </script>
 </body>
 </html>
