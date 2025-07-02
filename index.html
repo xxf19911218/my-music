@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MP3 播放器</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.4/howler.min.js"></script>
+    <script src="siriwave.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -16,33 +18,60 @@
             width: 6px;
         }
         ::-webkit-scrollbar-track {
-            background: #e0e7ff; /* Indigo-100 */
+            background: #f0fdfa; /* Teal-50 */
             border-radius: 10px;
         }
         ::-webkit-scrollbar-thumb {
-            background: #6366f1; /* Indigo-500 */
+            background: #2dd4bf; /* Teal-400 */
             border-radius: 10px;
         }
         ::-webkit-scrollbar-thumb:hover {
-            background: #4f46e5; /* Indigo-600 */
+            background: #14b8a6; /* Teal-500 */
         }
         .song-item.active {
-            background-color: #e0f2fe; /* Sky-100 */
-            color: #0369a1; /* Sky-700 */
+            background-color: #ccfbf1; /* Teal-100 */
+            color: #134e4a; /* Teal-900 */
             font-weight: 500;
         }
-        .loader {
-            border: 4px solid #e0f2fe; /* Sky-100 */
-            border-top: 4px solid #0ea5e9; /* Sky-500 */
-            border-radius: 50%;
-            width: 24px;
-            height: 24px;
-            animation: spin 1s linear infinite;
-            display: none; /* Initially hidden */
+        .music-note-icon {
+            font-size: 20px;
+            margin: 0 4px;
+            animation-name: jump;
+            animation-duration: 1.2s;
+            animation-timing-function: ease-in-out;
+            animation-iteration-count: infinite;
+            transform-origin: bottom;
+            display: inline-block;
         }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        @keyframes jump {
+            0%, 100% {
+                transform: translateY(0) scale(1);
+                opacity: 0.6;
+            }
+            50% {
+                transform: translateY(-20px) scale(1.2);
+                opacity: 1;
+            }
+        }
+        .music-note-icon:nth-child(1) { color: #66d9e8; animation-delay: 0s; }    /* teal-3 */
+        .music-note-icon:nth-child(2) { color: #3bc9db; animation-delay: 0.2s; } /* teal-4 */
+        .music-note-icon:nth-child(3) { color: #20c997; animation-delay: 0.4s; } /* teal-5 */
+        .music-note-icon:nth-child(4) { color: #94d82d; animation-delay: 0.6s; } /* lime-4 */
+        .particle {
+            position: absolute;
+            border-radius: 50%;
+            pointer-events: none;
+            animation: bubble-effect 1s ease-out forwards;
+        }
+        @keyframes bubble-effect {
+            0% {
+                transform: translate(0, 0) scale(1);
+                opacity: 0.9;
+            }
+            100% {
+                transform: translate(var(--translateX), var(--translateY)) scale(0);
+                opacity: 0;
+            }
         }
         #albumArt {
             object-fit: cover;
@@ -50,115 +79,74 @@
             height: 100%;
         }
         #albumArtDefaultContainer {
-            background-color: #e0e7ff; 
+            background-color: #e6fcf5; /* A very light, fresh teal - from Open Color */
+            position: relative;
         }
-
-        /* 音符容器和音符样式 */
-        #notesContainer {
-            opacity: 0; /* Initially hidden, controlled by JS */
-            visibility: hidden; /* Initially hidden */
-            transition: opacity 0.3s ease, left 0.1s linear, visibility 0.3s ease; /* Smooth transitions */
-            z-index: 10; /* Ensure notes are above the progress bar */
-        }
-
-        .music-note-icon {
-            font-size: 14px; /* 音符大小调整为更小 */
-            margin: 0 1.5px;  /* 音符间距调整 */
-            animation-name: jump;
-            animation-duration: 0.9s; /* 动画持续时间微调 */
-            animation-timing-function: ease-in-out;
-            animation-iteration-count: infinite;
-            transform-origin: bottom; /* 从底部开始动画 */
-            display: inline-block;
-        }
-
-        @keyframes jump {
-            0%, 100% {
-                transform: translateY(0) scale(1) rotate(0deg);
-                opacity: 0.6;
-            }
-            25% {
-                transform: translateY(-8px) scale(1.05) rotate(-7deg); /* 跳跃高度和旋转调整 */
-                opacity: 0.8;
-            }
-            50% {
-                transform: translateY(-15px) scale(1.15) rotate(0deg); /* 跳得更高，缩放调整 */
-                opacity: 1;
-            }
-            75% {
-                transform: translateY(-8px) scale(1.05) rotate(7deg); /* 跳跃高度和旋转调整 */
-                opacity: 0.8;
-            }
-        }
-
-        /* 4个音符的颜色和动画延迟 */
-        .music-note-icon:nth-child(1) { color: #3b82f6; animation-delay: 0s; }    /* Tailwind blue-500 */
-        .music-note-icon:nth-child(2) { color: #ef4444; animation-delay: 0.2s; } /* Tailwind red-500 */
-        .music-note-icon:nth-child(3) { color: #22c55e; animation-delay: 0.4s; }  /* Tailwind green-500 */
-        .music-note-icon:nth-child(4) { color: #eab308; animation-delay: 0.6s; } /* Tailwind yellow-500 */
-
     </style>
 </head>
-<body class="bg-gradient-to-br from-sky-200 to-indigo-300 text-slate-800 flex flex-col items-center justify-center min-h-screen p-4 selection:bg-sky-500 selection:text-white">
+<body class="bg-gradient-to-br from-teal-50 to-lime-100 text-teal-800 flex flex-col items-center justify-center min-h-screen p-4 selection:bg-teal-500 selection:text-white">
 
     <div class="bg-white/70 backdrop-blur-lg shadow-2xl rounded-2xl w-full max-w-sm overflow-hidden">
-        <audio id="audioPlayer" class="hidden"></audio>
-
+        
         <div class="p-6 space-y-4">
             <div class="aspect-square rounded-lg shadow-lg overflow-hidden">
-                <div id="albumArtDefaultContainer" class="w-full h-full flex items-center justify-center bg-slate-200">
-                    <i class="fas fa-music text-slate-400 text-6xl"></i>
+                <div id="albumArtDefaultContainer" class="w-full h-full flex items-center justify-center">
+                    <!-- SiriWave.js will create and append its canvas here -->
+                    <div id="loadingOverlay" class="absolute inset-0 bg-white/70 backdrop-blur-sm hidden flex-col items-center justify-center text-teal-700">
+                        <div class="flex">
+                           <i class="fas fa-music music-note-icon"></i>
+                           <i class="fas fa-music music-note-icon"></i>
+                           <i class="fas fa-music music-note-icon"></i>
+                           <i class="fas fa-music music-note-icon"></i>
+                        </div>
+                        <p class="mt-4 text-sm font-medium">正在加载...</p>
+                    </div>
                 </div>
-                <img id="albumArt" src="" alt="专辑封面" class="w-full h-full object-cover hidden">
+                <img id="albumArt" src="" alt="专辑封面" class="w-full h-full object-cover hidden" style="position: relative; z-index: 10;">
             </div>
             <div>
-                <h2 id="songTitle" class="text-2xl font-semibold text-center truncate text-slate-700" title="歌曲名称">歌曲名称</h2>
+                <h2 id="songTitle" class="text-2xl font-semibold text-center truncate text-teal-700" title="歌曲名称">歌曲名称</h2>
             </div>
         </div>
 
         <div class="px-6 space-y-2 relative">
-            <div id="notesContainer" class="absolute pointer-events-none flex items-end" style="height: 30px; bottom: 26px;"> {/* 高度和底部位置微调 */}
-                {/* 音符将由 JavaScript 在此创建 */}
-            </div>
-            <input type="range" id="progressBar" value="0" class="w-full h-2 bg-slate-300 rounded-lg appearance-none cursor-pointer accent-sky-500">
-            <div class="flex justify-between text-xs text-slate-500">
+            <div id="particleContainer" class="absolute w-full h-full top-0 left-0 pointer-events-none"></div>
+            <input type="range" id="progressBar" value="0" class="w-full h-2 bg-teal-200 rounded-lg appearance-none cursor-pointer accent-teal-500">
+            <div class="flex justify-between text-xs text-teal-600">
                 <span id="currentTime">0:00</span>
                 <span id="totalDuration">0:00</span>
             </div>
         </div>
 
         <div class="flex items-center justify-around p-6">
-            <button id="prevBtn" class="text-slate-500 hover:text-sky-500 transition-colors p-3 rounded-full hover:bg-sky-100/50">
+            <button id="prevBtn" class="text-teal-600 hover:text-teal-500 transition-colors p-3 rounded-full hover:bg-teal-100/50">
                 <i class="fas fa-backward-step fa-lg"></i>
             </button>
-            <button id="playPauseBtn" class="text-white bg-sky-500 hover:bg-sky-600 transition-colors w-16 h-16 rounded-full flex items-center justify-center shadow-lg">
+            <button id="playPauseBtn" class="text-white bg-teal-500 hover:bg-teal-600 transition-colors w-16 h-16 rounded-full flex items-center justify-center shadow-lg">
                 <i class="fas fa-play fa-xl"></i>
             </button>
-            <button id="nextBtn" class="text-slate-500 hover:text-sky-500 transition-colors p-3 rounded-full hover:bg-sky-100/50">
+            <button id="nextBtn" class="text-teal-600 hover:text-teal-500 transition-colors p-3 rounded-full hover:bg-teal-100/50">
                 <i class="fas fa-forward-step fa-lg"></i>
             </button>
         </div>
         
         <div class="px-6 pb-6 flex items-center space-x-3">
-            <i class="fas fa-volume-down text-slate-500"></i>
-            <input type="range" id="volumeControl" min="0" max="1" step="0.01" value="0.5" class="w-full h-2 bg-slate-300 rounded-lg appearance-none cursor-pointer accent-sky-500">
-            <i class="fas fa-volume-up text-slate-500"></i>
+            <i class="fas fa-volume-down text-teal-600"></i>
+            <input type="range" id="volumeControl" min="0" max="1" step="0.01" value="0.5" class="w-full h-2 bg-teal-200 rounded-lg appearance-none cursor-pointer accent-teal-500">
+            <i class="fas fa-volume-up text-teal-600"></i>
         </div>
 
         <div class="border-t border-slate-300/70 p-3">
-            <h3 class="text-sm font-medium text-center text-sky-600">播放列表</h3>
+            <h3 class="text-sm font-medium text-center text-teal-600">播放列表</h3>
         </div>
         
         <div id="playlistContainer" class="h-40 overflow-y-auto bg-white/30">
             {/* 播放列表项将由 JavaScript 在此创建 */}
         </div>
-         <div class="flex justify-center py-3">
-            <div id="loadingIndicator" class="loader"></div>
-        </div>
     </div>
 
     <script>
-        const audioPlayer = document.getElementById('audioPlayer');
+        // --- DOM Elements ---
         const albumArtDefaultContainer = document.getElementById('albumArtDefaultContainer');
         const albumArt = document.getElementById('albumArt');
         const songTitle = document.getElementById('songTitle');
@@ -171,12 +159,21 @@
         const nextBtn = document.getElementById('nextBtn');
         const volumeControl = document.getElementById('volumeControl');
         const playlistContainer = document.getElementById('playlistContainer');
-        const loadingIndicator = document.getElementById('loadingIndicator');
-        const notesContainer = document.getElementById('notesContainer'); // 获取音符容器
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const particleContainer = document.getElementById('particleContainer');
 
-        // --- 歌曲数据 ---
-        // artist property removed.
-        // albumArt: Provide a URL for actual art, or empty string / "NO_ART" to use default icon.
+        // --- Player State ---
+        let sound;
+        let currentSongIndex = 0;
+        let isSeeking = false;
+        let siriWave;
+        let analyser;
+        let dataArray;
+        let isVisualizerSetup = false;
+        let frameCounter = 0;
+        const particleColors = [ '#66d9e8', '#3bc9db', '#20c997', '#94d82d', '#82c91e' ];
+
+        // --- Songs Data ---
         const songs = [
             { title: "FreeLoop", src: "./music/Free_Loop.mp3", albumArt: "" },
             { title: "ThatGirl", src: "./music/That_Girl.mp3", albumArt: "" },
@@ -208,74 +205,109 @@
             { title: "遥远的你", src: "./music/遥远的你-不靠谱组合.mp3", albumArt: "" }
         ];
 
-        let currentSongIndex = 0;
-        let isPlaying = false;
-
-        // 创建音符元素
-        function createMusicalNotes() {
-            const numNotes = 4; // 创建4个音符
-            notesContainer.innerHTML = ''; // 清空旧音符（如果需要重新创建）
-            for (let i = 0; i < numNotes; i++) {
-                const noteEl = document.createElement('i');
-                noteEl.classList.add('fas', 'fa-music', 'music-note-icon');
-                // CSS :nth-child 会处理颜色和动画延迟
-                notesContainer.appendChild(noteEl);
-            }
-        }
-
-        // 更新音符位置和可见性
-        function updateNotesPosition() {
-            if (!audioPlayer.duration || audioPlayer.duration <= 0) {
-                notesContainer.style.opacity = '0';
-                notesContainer.style.visibility = 'hidden';
-                return;
-            }
-
-            if (isPlaying) {
-                notesContainer.style.opacity = '1';
-                notesContainer.style.visibility = 'visible';
-            } else {
-                notesContainer.style.opacity = '0';
-                notesContainer.style.visibility = 'hidden';
-            }
-
-            const progressPercent = (progressBar.value / progressBar.max);
-            const progressBarWidth = progressBar.offsetWidth;
-            const notesContainerWidth = notesContainer.offsetWidth;
-
-            let thumbCenterRelativeToProgressBarStart = progressPercent * progressBarWidth;
-            let newLeft = thumbCenterRelativeToProgressBarStart - (notesContainerWidth / 2);
-
-            // 限制音符容器在进度条范围内
-            newLeft = Math.max(0, Math.min(newLeft, progressBarWidth - notesContainerWidth));
+        // --- Audio Analysis ---
+        function setupVisualizer() {
+            if (!Howler.ctx || isVisualizerSetup) return; 
+            analyser = Howler.ctx.createAnalyser();
             
-            notesContainer.style.left = `${newLeft}px`;
+            // Re-route the master gain through the analyser to ensure it gets the data
+            Howler.masterGain.disconnect();
+            Howler.masterGain.connect(analyser);
+            analyser.connect(Howler.ctx.destination);
+
+            analyser.fftSize = 256;
+            dataArray = new Uint8Array(analyser.frequencyBinCount);
+            isVisualizerSetup = true;
+        }
+        
+        function updateWaveAmplitude() {
+            if (!sound || !sound.playing() || !isVisualizerSetup) return;
+            
+            analyser.getByteFrequencyData(dataArray);
+            let sum = 0;
+            for (let i = 0; i < dataArray.length; i++) {
+                sum += dataArray[i];
+            }
+            const average = sum / dataArray.length;
+            
+            // Map the average volume (0-255) to a suitable amplitude (0-1)
+            // Add a bit of a curve to make the response more noticeable
+            const amplitude = Math.pow(average / 255, 2) * 3;
+            
+            siriWave.setAmplitude(Math.min(amplitude, 1)); // Cap at 1
+
+            requestAnimationFrame(updateWaveAmplitude);
         }
 
+        function emitParticle() {
+            const particle = document.createElement('div');
+            particle.classList.add('particle');
+            
+            const size = Math.floor(Math.random() * 4) + 2; // 2px to 6px
+            particle.style.width = `${size}px`;
+            particle.style.height = `${size}px`;
+            
+            particle.style.backgroundColor = particleColors[Math.floor(Math.random() * particleColors.length)];
+            
+            // Accurately calculate the thumb's center position
+            const thumbWidth = 16; // Approximate pixel width of the range thumb
+            const trackWidth = progressBar.offsetWidth;
+            const progressPercent = progressBar.value / progressBar.max;
+            const thumbPositionX = progressPercent * (trackWidth - thumbWidth) + (thumbWidth / 2);
+            const thumbPositionY = progressBar.offsetHeight / 2;
 
-        function loadSong(songIndex) {
+            // Center the particle on the thumb's center, and shift slightly left for the "exhaust" effect
+            particle.style.left = `${thumbPositionX - (size / 2) + 10}px`;
+            particle.style.top = `${thumbPositionY - (size / 2)}px`;
+
+            // Randomize the particle's destination for a more natural effect
+            const randomX = (Math.random() - 0.75) * 40; // Skew to the left
+            const randomY = -(Math.random() * 20 + 20);
+            particle.style.setProperty('--translateX', `${randomX}px`);
+            particle.style.setProperty('--translateY', `${randomY}px`);
+
+            particleContainer.appendChild(particle);
+            
+            setTimeout(() => {
+                particle.remove();
+            }, 1000); // Remove particle after animation (1s)
+        }
+
+        // --- Core Player Functions ---
+        
+        function loadSong(songIndex, playOnLoad = false) {
             if (songIndex < 0 || songIndex >= songs.length) return;
             
-            loadingIndicator.style.display = 'block'; // 显示加载指示器
-            albumArt.classList.add('hidden'); // 隐藏旧封面
-            albumArtDefaultContainer.classList.remove('hidden'); // 显示默认图标
+            // Unload previous sound
+            if (sound) {
+                sound.unload();
+            }
+            if (siriWave) {
+                siriWave.setAmplitude(0);
+            }
 
-            const song = songs[songIndex];
+            loadingOverlay.classList.remove('hidden');
+            loadingOverlay.classList.add('flex');
+
             currentSongIndex = songIndex;
-            
-            songTitle.textContent = song.title;
-            songTitle.title = song.title; 
+            const song = songs[songIndex];
 
-            if (song.albumArt && song.albumArt.trim() !== "" && song.albumArt !== "NO_ART") {
+            albumArt.classList.add('hidden');
+            albumArtDefaultContainer.classList.remove('hidden');
+
+            songTitle.textContent = song.title;
+            songTitle.title = song.title;
+
+            // Handle Album Art
+             if (song.albumArt && song.albumArt.trim() !== "" && song.albumArt !== "NO_ART") {
                 albumArt.src = song.albumArt;
-                albumArt.onload = () => { // 确保图片加载后再显示
+                albumArt.onload = () => { 
                     albumArt.classList.remove('hidden');
                     albumArtDefaultContainer.classList.add('hidden');
                 }
-                albumArt.onerror = () => { // 图片加载失败处理
+                albumArt.onerror = () => { 
                     albumArt.classList.add('hidden');
                     albumArtDefaultContainer.classList.remove('hidden');
-                     console.warn("Album art failed to load: " + song.albumArt);
                 }
             } else {
                 albumArt.src = ""; 
@@ -283,186 +315,189 @@
                 albumArtDefaultContainer.classList.remove('hidden');
             }
             
-            audioPlayer.src = song.src;
-            updatePlaylistHighlight();
-
-            audioPlayer.onloadedmetadata = () => {
-                totalDurationDisplay.textContent = formatTime(audioPlayer.duration);
-                progressBar.max = audioPlayer.duration;
-                progressBar.value = 0; // 重置进度条
-                currentTimeDisplay.textContent = formatTime(0);
-                loadingIndicator.style.display = 'none'; 
-                updateNotesPosition(); // 更新音符初始位置和状态
-                if (isPlaying) { 
-                    playSong(); // 如果之前是播放状态，则自动播放新歌
-                }
-            };
-            audioPlayer.onerror = () => {
-                loadingIndicator.style.display = 'none';
-                // 避免覆盖整个播放列表，可以在特定区域显示错误
-                const errorMsg = document.createElement('p');
-                errorMsg.className = 'text-red-500 p-2 text-center text-xs';
-                errorMsg.textContent = `错误: 无法加载歌曲 "${song.title}"`;
-                // 简单地在播放列表顶部插入错误
-                if(playlistContainer.firstChild && playlistContainer.firstChild.textContent.startsWith("错误:")) {
-                    playlistContainer.firstChild.remove(); // 移除旧的错误信息
-                }
-                playlistContainer.insertBefore(errorMsg, playlistContainer.firstChild);
-                setTimeout(() => { if(errorMsg.parentNode) errorMsg.remove() }, 5000);
-                console.error("Error loading song: " + song.src);
-                // 尝试播放下一首，或者停止
-                if (songs.length > 1) { 
-                    // nextSong(); // 自动跳到下一首可能会导致循环错误，用户手动操作更好
-                } else {
-                    pauseSong(); // 停止播放
+            sound = new Howl({
+                src: [song.src],
+                volume: parseFloat(volumeControl.value),
+                onload: () => {
+                    if (!isVisualizerSetup) {
+                        setupVisualizer();
+                    }
+                    loadingOverlay.classList.add('hidden');
+                    loadingOverlay.classList.remove('flex');
+                    totalDurationDisplay.textContent = formatTime(sound.duration());
+                    progressBar.max = sound.duration();
+                    progressBar.value = 0;
+                    currentTimeDisplay.textContent = formatTime(0);
+                    if (playOnLoad) playSong();
+                },
+                onplay: () => {
+                    playPauseIcon.classList.remove('fa-play');
+                    playPauseIcon.classList.add('fa-pause');
+                    requestAnimationFrame(updateProgress);
+                    requestAnimationFrame(updateWaveAmplitude); // Start the animation loop
+                },
+                onpause: () => {
+                    playPauseIcon.classList.remove('fa-pause');
+                    playPauseIcon.classList.add('fa-play');
+                    if (siriWave) siriWave.setAmplitude(0);
+                },
+                onend: () => {
+                    playPauseIcon.classList.remove('fa-pause');
+                    playPauseIcon.classList.add('fa-play');
+                    if (siriWave) siriWave.setAmplitude(0);
+                    nextSong();
+                },
+                onloaderror: (id, err) => {
+                    loadingOverlay.classList.add('hidden');
+                    loadingOverlay.classList.remove('flex');
+                    console.error("Howler load error:", err);
                     songTitle.textContent = "加载失败";
+                    if (siriWave) siriWave.setAmplitude(0);
                 }
-            }
+            });
+
+            updatePlaylistHighlight();
         }
 
         function playSong() {
-            isPlaying = true;
-            // 确保 audioPlayer.play() 返回的是 Promise
-            const playPromise = audioPlayer.play();
-            if (playPromise !== undefined) {
-                playPromise.then(_ => {
-                    // 播放成功
-                    playPauseIcon.classList.remove('fa-play');
-                    playPauseIcon.classList.add('fa-pause');
-                })
-                .catch(error => {
-                    console.error("播放错误:", error);
-                    isPlaying = false; 
-                    playPauseIcon.classList.remove('fa-pause');
-                    playPauseIcon.classList.add('fa-play');
-                    // 界面提示用户播放失败
-                    const errorMsg = document.createElement('p');
-                    errorMsg.className = 'text-red-500 p-2 text-center text-xs absolute top-0 left-1/2 -translate-x-1/2 bg-white/80 rounded-md shadow-lg';
-                    errorMsg.textContent = `播放失败: 请检查音频文件或网络。`;
-                    document.body.appendChild(errorMsg); // 添加到body，使其在最上层
-                    setTimeout(() => { if(errorMsg.parentNode) errorMsg.remove() }, 3000);
-                });
+            if (!sound) { // If no sound is loaded, load the first one
+                loadSong(currentSongIndex, true);
+                return;
             }
-            updateNotesPosition(); // 更新音符状态
+            if (!sound.playing()) {
+                sound.play();
+            }
         }
 
         function pauseSong() {
-            isPlaying = false;
-            audioPlayer.pause();
-            playPauseIcon.classList.remove('fa-pause');
-            playPauseIcon.classList.add('fa-play');
-            updateNotesPosition(); // 更新音符状态
+            if (sound && sound.playing()) {
+                sound.pause();
+            }
         }
-
+        
         function togglePlayPause() {
-            if (audioPlayer.src && audioPlayer.src !== window.location.href) { // 检查是否有有效歌曲源
-                 if (isPlaying) {
-                    pauseSong();
-                } else {
-                    playSong();
-                }
-            } else if (songs.length > 0) { // 如果没有有效源但列表有歌，尝试加载第一首
-                loadSong(currentSongIndex); 
+            if (!sound) {
+                playSong(); // Will load and then play
+            } else if (sound.playing()) {
+                pauseSong();
+            } else {
+                playSong();
             }
         }
 
         function prevSong() {
-            currentSongIndex = (currentSongIndex - 1 + songs.length) % songs.length;
-            loadSong(currentSongIndex);
+            let newIndex = (currentSongIndex - 1 + songs.length) % songs.length;
+            loadSong(newIndex, true);
         }
 
         function nextSong() {
-            currentSongIndex = (currentSongIndex + 1) % songs.length;
-            loadSong(currentSongIndex);
+            let newIndex = (currentSongIndex + 1) % songs.length;
+            loadSong(newIndex, true);
         }
 
         function updateProgress() {
-            if (audioPlayer.duration) {
-                progressBar.value = audioPlayer.currentTime;
-                currentTimeDisplay.textContent = formatTime(audioPlayer.currentTime);
-                updateNotesPosition(); // 实时更新音符位置
+            if (sound && sound.playing() && !isSeeking) {
+                const seek = sound.seek() || 0;
+                currentTimeDisplay.textContent = formatTime(seek);
+                progressBar.value = seek;
+                
+                frameCounter++;
+                if (frameCounter % 8 === 0) { // Emit particle every 8 frames to reduce density
+                    emitParticle();
+                }
+
+                requestAnimationFrame(updateProgress); // Continue the loop
+            }
+        }
+        
+        function setProgress() {
+            if (sound) {
+                sound.seek(parseFloat(progressBar.value));
             }
         }
 
-        function setProgress(e) {
-            if(audioPlayer.duration) { // 只有在歌曲加载完毕后才允许拖动
-                 audioPlayer.currentTime = e.target.value;
-                 updateNotesPosition(); // 更新音符位置
-            }
+        function setVolume() {
+            Howler.volume(parseFloat(volumeControl.value));
         }
 
         function formatTime(seconds) {
-            const minutes = Math.floor(seconds / 60);
-            const secs = Math.floor(seconds % 60);
+            const minutes = Math.floor(seconds / 60) || 0;
+            const secs = Math.floor(seconds % 60) || 0;
             return `${minutes}:${secs < 10 ? '0' : ''}${secs}`;
         }
-
-        function setVolume(e) {
-            audioPlayer.volume = e.target.value;
-        }
-
+        
         function renderPlaylist() {
             playlistContainer.innerHTML = '';
             if (songs.length === 0) {
-                playlistContainer.innerHTML = '<p class="text-slate-500 p-4 text-center">播放列表为空。</p>';
+                playlistContainer.innerHTML = '<p class="text-teal-500 p-4 text-center">播放列表为空。</p>';
                 return;
             }
             songs.forEach((song, index) => {
                 const div = document.createElement('div');
-                div.classList.add('song-item', 'p-3', 'hover:bg-sky-50', 'cursor-pointer', 'border-b', 'border-slate-200/80', 'text-sm', 'transition-colors', 'truncate');
+                div.classList.add('song-item', 'p-3', 'hover:bg-teal-50', 'cursor-pointer', 'border-b', 'border-slate-200/80', 'text-sm', 'transition-colors', 'truncate');
                 div.textContent = song.title;
                 div.title = song.title; 
                 
                 div.addEventListener('click', () => {
-                    if (currentSongIndex !== index || !isPlaying) {
-                        isPlaying = true; 
-                        loadSong(index);
-                    }
+                    loadSong(index, true);
                 });
                 playlistContainer.appendChild(div);
             });
             updatePlaylistHighlight();
         }
-        
+
         function updatePlaylistHighlight() {
             const songItems = playlistContainer.querySelectorAll('.song-item');
             songItems.forEach((item, index) => {
-                if (index === currentSongIndex) {
-                    item.classList.add('active');
-                } else {
-                    item.classList.remove('active');
-                }
+                item.classList.toggle('active', index === currentSongIndex);
             });
         }
 
-        // 事件监听器
+        // --- Event Listeners ---
         playPauseBtn.addEventListener('click', togglePlayPause);
         prevBtn.addEventListener('click', prevSong);
         nextBtn.addEventListener('click', nextSong);
-        audioPlayer.addEventListener('timeupdate', updateProgress);
-        audioPlayer.addEventListener('ended', nextSong); 
-        progressBar.addEventListener('input', setProgress); 
+        
+        progressBar.addEventListener('change', setProgress);
+        progressBar.addEventListener('mousedown', () => { isSeeking = true; });
+        progressBar.addEventListener('mouseup', () => { isSeeking = false; });
+        
         volumeControl.addEventListener('input', setVolume);
         
-        // 初始加载
         window.addEventListener('load', () => {
-            createMusicalNotes(); // 创建音符DOM元素
+            Howler.volume(parseFloat(volumeControl.value));
+            
+            siriWave = new SiriWave({
+                container: albumArtDefaultContainer,
+                width: albumArtDefaultContainer.offsetWidth,
+                height: albumArtDefaultContainer.offsetHeight,
+                colors: [
+                  '#66d9e8', // teal-3
+                  '#3bc9db', // teal-4
+                  '#20c997', // teal-5
+                  '#94d82d', // lime-4
+                  '#82c91e'  // lime-5
+                ],
+                frequency: 2,
+                speed: 0.05,
+                amplitude: 0,
+                cover: true
+            });
+            siriWave.start();
+
             if (songs.length > 0) {
                 loadSong(currentSongIndex); 
             } else {
                 songTitle.textContent = "播放列表为空";
                 totalDurationDisplay.textContent = "0:00";
-                loadingIndicator.style.display = 'none';
-                updateNotesPosition(); 
             }
             renderPlaylist();
-            audioPlayer.volume = parseFloat(volumeControl.value); 
         });
 
         window.addEventListener('resize', () => {
-            if (audioPlayer.readyState > 0) { 
-                 updateNotesPosition();
-            }
+            // The siriwave library doesn't have a built-in resize handler,
+            // so for a truly responsive solution, it would need to be destroyed and recreated.
+            // For now, we'll leave it as is.
         });
 
     </script>
