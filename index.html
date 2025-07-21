@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,27 +13,39 @@
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            overscroll-behavior-y: contain; /* Prevents pull-to-refresh on mobile when scrolling playlist */
+            overscroll-behavior-y: contain;
+            /* Prevents pull-to-refresh on mobile when scrolling playlist */
         }
+
         ::-webkit-scrollbar {
             width: 6px;
         }
+
         ::-webkit-scrollbar-track {
-            background: #f0fdfa; /* Teal-50 */
+            background: #f4e8e0;
+            /* 温暖的粉米色 */
             border-radius: 10px;
         }
+
         ::-webkit-scrollbar-thumb {
-            background: #2dd4bf; /* Teal-400 */
+            background: #81c784;
+            /* 自然绿色 */
             border-radius: 10px;
         }
+
         ::-webkit-scrollbar-thumb:hover {
-            background: #14b8a6; /* Teal-500 */
+            background: #66bb6a;
+            /* 深一点的绿色 */
         }
+
         .song-item.active {
-            background-color: #ccfbf1; /* Teal-100 */
-            color: #134e4a; /* Teal-900 */
+            background: linear-gradient(135deg, #a8d5ba 0%, rgba(129, 199, 132, 0.3) 100%);
+            /* 绿色渐变 */
+            color: #2d5016;
+            /* 深绿色文字 */
             font-weight: 500;
         }
+
         .music-note-icon {
             font-size: 20px;
             margin: 0 4px;
@@ -43,104 +56,213 @@
             transform-origin: bottom;
             display: inline-block;
         }
+
         @keyframes jump {
-            0%, 100% {
+
+            0%,
+            100% {
                 transform: translateY(0) scale(1);
                 opacity: 0.6;
             }
+
             50% {
                 transform: translateY(-20px) scale(1.2);
                 opacity: 1;
             }
         }
-        .music-note-icon:nth-child(1) { color: #66d9e8; animation-delay: 0s; }    /* teal-3 */
-        .music-note-icon:nth-child(2) { color: #3bc9db; animation-delay: 0.2s; } /* teal-4 */
-        .music-note-icon:nth-child(3) { color: #20c997; animation-delay: 0.4s; } /* teal-5 */
-        .music-note-icon:nth-child(4) { color: #94d82d; animation-delay: 0.6s; } /* lime-4 */
+
+        .music-note-icon:nth-child(1) {
+            color: #a8d5ba;
+            animation-delay: 0s;
+        }
+
+        /* 浅绿色 */
+        .music-note-icon:nth-child(2) {
+            color: #81c784;
+            animation-delay: 0.2s;
+        }
+
+        /* 中绿色 */
+        .music-note-icon:nth-child(3) {
+            color: #66bb6a;
+            animation-delay: 0.4s;
+        }
+
+        /* 深绿色 */
+        .music-note-icon:nth-child(4) {
+            color: #c8a882;
+            animation-delay: 0.6s;
+        }
+
+        /* 温暖棕色 */
         .particle {
             position: absolute;
             border-radius: 50%;
             pointer-events: none;
             animation: bubble-effect 1s ease-out forwards;
         }
+
         @keyframes bubble-effect {
             0% {
                 transform: translate(0, 0) scale(1);
                 opacity: 0.9;
             }
+
             100% {
                 transform: translate(var(--translateX), var(--translateY)) scale(0);
                 opacity: 0;
             }
         }
+
         #albumArt {
             object-fit: cover;
             width: 100%;
             height: 100%;
         }
+
         #albumArtDefaultContainer {
-            background-color: #e6fcf5; /* A very light, fresh teal - from Open Color */
+            background: linear-gradient(135deg, #f4e8e0 0%, #e8d5c8 50%, #a8d5ba 100%);
+            /* 温暖渐变背景 */
             position: relative;
+        }
+
+        /* 自定义主要背景渐变 */
+        .berry-bg {
+            background: linear-gradient(135deg, #f4e8e0 0%, #e8d5c8 30%, #f0e6d6 70%, #e8d5c8 100%);
+        }
+
+        /* 播放器容器样式 */
+        .player-container {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        /* 进度条样式 */
+        #progressBar {
+            background: linear-gradient(90deg, #f4e8e0, #e8d5c8);
+            accent-color: #ebaca8;
+        }
+
+        /* 音量控制样式 */
+        #volumeControl {
+            background: linear-gradient(90deg, #f4e8e0, #e8d5c8);
+            accent-color: #81c784;
+        }
+
+        /* 播放按钮样式 */
+        .play-button {
+            background: linear-gradient(135deg, #8BC34A 0%, #607D8B 100%);
+            box-shadow: 0 0px 10px #9E9E9E;
+        }
+
+        .play-button:hover {
+            background: linear-gradient(135deg, #8BC34A 0%, #607D8B 100%);
+            box-shadow: 0 0px 10px #9E9E9E;
+        }
+
+        /* 其他按钮样式 */
+        .control-btn {
+            color: #bee1c6;
+            transition: all 0.2s;
+        }
+
+        .control-btn:hover {
+            color: #66bb6a;
+            background: rgba(129, 199, 132, 0.1);
+        }
+
+        /* 文字颜色调整 */
+        .text-primary {
+            color: #000000;
+        }
+
+        .text-secondary {
+            color: #000000;
+        }
+
+        .text-muted {
+            color: #a0a0a0;
+        }
+
+        /* 播放列表样式 */
+        .playlist-bg {
+            background: rgba(255, 255, 255, 0.4);
+        }
+
+        .song-item {
+            border-color: rgba(129, 199, 132, 0.2) !important;
+        }
+
+        .song-item:hover {
+            background: rgba(168, 213, 186, 0.2) !important;
         }
     </style>
 </head>
-<body class="bg-gradient-to-br from-teal-50 to-lime-100 text-teal-800 flex flex-col items-center justify-center min-h-screen p-4 selection:bg-teal-500 selection:text-white">
 
-    <div class="bg-white/70 backdrop-blur-lg shadow-2xl rounded-2xl w-full max-w-sm overflow-hidden">
-        
+<body
+    class="berry-bg text-primary flex flex-col items-center justify-center min-h-screen p-4 selection:bg-green-500 selection:text-white">
+
+    <div class="player-container shadow-2xl rounded-2xl w-full max-w-sm overflow-hidden">
+
         <div class="p-6 space-y-4">
             <div class="aspect-square rounded-lg shadow-lg overflow-hidden">
                 <div id="albumArtDefaultContainer" class="w-full h-full flex items-center justify-center">
                     <!-- SiriWave.js will create and append its canvas here -->
-                    <div id="loadingOverlay" class="absolute inset-0 bg-white/70 backdrop-blur-sm hidden flex-col items-center justify-center text-teal-700">
+                    <div id="loadingOverlay"
+                        class="absolute inset-0 bg-white/70 backdrop-blur-sm hidden flex-col items-center justify-center text-secondary">
                         <div class="flex">
-                           <i class="fas fa-music music-note-icon"></i>
-                           <i class="fas fa-music music-note-icon"></i>
-                           <i class="fas fa-music music-note-icon"></i>
-                           <i class="fas fa-music music-note-icon"></i>
+                            <i class="fas fa-music music-note-icon"></i>
+                            <i class="fas fa-music music-note-icon"></i>
+                            <i class="fas fa-music music-note-icon"></i>
+                            <i class="fas fa-music music-note-icon"></i>
                         </div>
                         <p class="mt-4 text-sm font-medium">正在加载...</p>
                     </div>
                 </div>
-                <img id="albumArt" src="" alt="专辑封面" class="w-full h-full object-cover hidden" style="position: relative; z-index: 10;">
+                <img id="albumArt" src="" alt="专辑封面" class="w-full h-full object-cover hidden"
+                    style="position: relative; z-index: 10;">
             </div>
             <div>
-                <h2 id="songTitle" class="text-2xl font-semibold text-center truncate text-teal-700" title="歌曲名称">歌曲名称</h2>
+                <h2 id="songTitle" class="text-2xl font-semibold text-center truncate text-primary" title="歌曲名称">歌曲名称
+                </h2>
             </div>
         </div>
 
         <div class="px-6 space-y-2 relative">
             <div id="particleContainer" class="absolute w-full h-full top-0 left-0 pointer-events-none"></div>
-            <input type="range" id="progressBar" value="0" class="w-full h-2 bg-teal-200 rounded-lg appearance-none cursor-pointer accent-teal-500">
-            <div class="flex justify-between text-xs text-teal-600">
+            <input type="range" id="progressBar" value="0" class="w-full h-2 rounded-lg appearance-none cursor-pointer">
+            <div class="flex justify-between text-xs text-muted">
                 <span id="currentTime">0:00</span>
                 <span id="totalDuration">0:00</span>
             </div>
         </div>
 
         <div class="flex items-center justify-around p-6">
-            <button id="prevBtn" class="text-teal-600 hover:text-teal-500 transition-colors p-3 rounded-full hover:bg-teal-100/50">
+            <button id="prevBtn" class="control-btn p-3 rounded-full">
                 <i class="fas fa-backward-step fa-lg"></i>
             </button>
-            <button id="playPauseBtn" class="text-white bg-teal-500 hover:bg-teal-600 transition-colors w-16 h-16 rounded-full flex items-center justify-center shadow-lg">
+            <button id="playPauseBtn"
+                class="play-button text-white w-16 h-16 rounded-full flex items-center justify-center transition-all duration-200">
                 <i class="fas fa-play fa-xl"></i>
             </button>
-            <button id="nextBtn" class="text-teal-600 hover:text-teal-500 transition-colors p-3 rounded-full hover:bg-teal-100/50">
+            <button id="nextBtn" class="control-btn p-3 rounded-full">
                 <i class="fas fa-forward-step fa-lg"></i>
             </button>
         </div>
-        
+
         <div class="px-6 pb-6 flex items-center space-x-3">
-            <i class="fas fa-volume-down text-teal-600"></i>
-            <input type="range" id="volumeControl" min="0" max="1" step="0.01" value="0.5" class="w-full h-2 bg-teal-200 rounded-lg appearance-none cursor-pointer accent-teal-500">
-            <i class="fas fa-volume-up text-teal-600"></i>
+            <i class="fas fa-volume-down text-secondary"></i>
+            <input type="range" id="volumeControl" min="0" max="1" step="0.01" value="0.5"
+                class="w-full h-2 rounded-lg appearance-none cursor-pointer">
+            <i class="fas fa-volume-up text-secondary"></i>
         </div>
 
-        <div class="border-t border-slate-300/70 p-3">
-            <h3 class="text-sm font-medium text-center text-teal-600">播放列表</h3>
+        <div class="border-t border-slate-300/30 p-3">
+            <h3 class="text-sm font-medium text-center text-secondary">播放列表</h3>
         </div>
-        
-        <div id="playlistContainer" class="h-40 overflow-y-auto bg-white/30">
+
+        <div id="playlistContainer" class="h-40 overflow-y-auto playlist-bg">
             {/* 播放列表项将由 JavaScript 在此创建 */}
         </div>
     </div>
@@ -171,7 +293,7 @@
         let dataArray;
         let isVisualizerSetup = false;
         let frameCounter = 0;
-        const particleColors = [ '#66d9e8', '#3bc9db', '#20c997', '#94d82d', '#82c91e' ];
+        const particleColors = ['#a8d5ba', '#81c784', '#66bb6a', '#c8a882', '#e8d5c8']; // 温暖自然色调
 
         // --- Songs Data ---
         const songs = [
@@ -207,9 +329,9 @@
 
         // --- Audio Analysis ---
         function setupVisualizer() {
-            if (!Howler.ctx || isVisualizerSetup) return; 
+            if (!Howler.ctx || isVisualizerSetup) return;
             analyser = Howler.ctx.createAnalyser();
-            
+
             // Re-route the master gain through the analyser to ensure it gets the data
             Howler.masterGain.disconnect();
             Howler.masterGain.connect(analyser);
@@ -219,21 +341,21 @@
             dataArray = new Uint8Array(analyser.frequencyBinCount);
             isVisualizerSetup = true;
         }
-        
+
         function updateWaveAmplitude() {
             if (!sound || !sound.playing() || !isVisualizerSetup) return;
-            
+
             analyser.getByteFrequencyData(dataArray);
             let sum = 0;
             for (let i = 0; i < dataArray.length; i++) {
                 sum += dataArray[i];
             }
             const average = sum / dataArray.length;
-            
+
             // Map the average volume (0-255) to a suitable amplitude (0-1)
             // Add a bit of a curve to make the response more noticeable
             const amplitude = Math.pow(average / 255, 2) * 3;
-            
+
             siriWave.setAmplitude(Math.min(amplitude, 1)); // Cap at 1
 
             requestAnimationFrame(updateWaveAmplitude);
@@ -242,13 +364,13 @@
         function emitParticle() {
             const particle = document.createElement('div');
             particle.classList.add('particle');
-            
+
             const size = Math.floor(Math.random() * 4) + 2; // 2px to 6px
             particle.style.width = `${size}px`;
             particle.style.height = `${size}px`;
-            
+
             particle.style.backgroundColor = particleColors[Math.floor(Math.random() * particleColors.length)];
-            
+
             // Accurately calculate the thumb's center position
             const thumbWidth = 16; // Approximate pixel width of the range thumb
             const trackWidth = progressBar.offsetWidth;
@@ -267,17 +389,17 @@
             particle.style.setProperty('--translateY', `${randomY}px`);
 
             particleContainer.appendChild(particle);
-            
+
             setTimeout(() => {
                 particle.remove();
             }, 1000); // Remove particle after animation (1s)
         }
 
         // --- Core Player Functions ---
-        
+
         function loadSong(songIndex, playOnLoad = false) {
             if (songIndex < 0 || songIndex >= songs.length) return;
-            
+
             // Unload previous sound
             if (sound) {
                 sound.unload();
@@ -299,22 +421,22 @@
             songTitle.title = song.title;
 
             // Handle Album Art
-             if (song.albumArt && song.albumArt.trim() !== "" && song.albumArt !== "NO_ART") {
+            if (song.albumArt && song.albumArt.trim() !== "" && song.albumArt !== "NO_ART") {
                 albumArt.src = song.albumArt;
-                albumArt.onload = () => { 
+                albumArt.onload = () => {
                     albumArt.classList.remove('hidden');
                     albumArtDefaultContainer.classList.add('hidden');
                 }
-                albumArt.onerror = () => { 
+                albumArt.onerror = () => {
                     albumArt.classList.add('hidden');
                     albumArtDefaultContainer.classList.remove('hidden');
                 }
             } else {
-                albumArt.src = ""; 
+                albumArt.src = "";
                 albumArt.classList.add('hidden');
                 albumArtDefaultContainer.classList.remove('hidden');
             }
-            
+
             sound = new Howl({
                 src: [song.src],
                 volume: parseFloat(volumeControl.value),
@@ -374,7 +496,7 @@
                 sound.pause();
             }
         }
-        
+
         function togglePlayPause() {
             if (!sound) {
                 playSong(); // Will load and then play
@@ -400,7 +522,7 @@
                 const seek = sound.seek() || 0;
                 currentTimeDisplay.textContent = formatTime(seek);
                 progressBar.value = seek;
-                
+
                 frameCounter++;
                 if (frameCounter % 8 === 0) { // Emit particle every 8 frames to reduce density
                     emitParticle();
@@ -409,7 +531,7 @@
                 requestAnimationFrame(updateProgress); // Continue the loop
             }
         }
-        
+
         function setProgress() {
             if (sound) {
                 sound.seek(parseFloat(progressBar.value));
@@ -425,19 +547,19 @@
             const secs = Math.floor(seconds % 60) || 0;
             return `${minutes}:${secs < 10 ? '0' : ''}${secs}`;
         }
-        
+
         function renderPlaylist() {
             playlistContainer.innerHTML = '';
             if (songs.length === 0) {
-                playlistContainer.innerHTML = '<p class="text-teal-500 p-4 text-center">播放列表为空。</p>';
+                playlistContainer.innerHTML = '<p class="text-secondary p-4 text-center">播放列表为空。</p>';
                 return;
             }
             songs.forEach((song, index) => {
                 const div = document.createElement('div');
-                div.classList.add('song-item', 'p-3', 'hover:bg-teal-50', 'cursor-pointer', 'border-b', 'border-slate-200/80', 'text-sm', 'transition-colors', 'truncate');
+                div.classList.add('song-item', 'p-3', 'cursor-pointer', 'border-b', 'text-sm', 'transition-colors', 'truncate');
                 div.textContent = song.title;
-                div.title = song.title; 
-                
+                div.title = song.title;
+
                 div.addEventListener('click', () => {
                     loadSong(index, true);
                 });
@@ -457,26 +579,26 @@
         playPauseBtn.addEventListener('click', togglePlayPause);
         prevBtn.addEventListener('click', prevSong);
         nextBtn.addEventListener('click', nextSong);
-        
+
         progressBar.addEventListener('change', setProgress);
         progressBar.addEventListener('mousedown', () => { isSeeking = true; });
         progressBar.addEventListener('mouseup', () => { isSeeking = false; });
-        
+
         volumeControl.addEventListener('input', setVolume);
-        
+
         window.addEventListener('load', () => {
             Howler.volume(parseFloat(volumeControl.value));
-            
+
             siriWave = new SiriWave({
                 container: albumArtDefaultContainer,
                 width: albumArtDefaultContainer.offsetWidth,
                 height: albumArtDefaultContainer.offsetHeight,
                 colors: [
-                  '#66d9e8', // teal-3
-                  '#3bc9db', // teal-4
-                  '#20c997', // teal-5
-                  '#94d82d', // lime-4
-                  '#82c91e'  // lime-5
+                    '#a8d5ba', // 浅绿色
+                    '#81c784', // 中绿色
+                    '#66bb6a', // 深绿色
+                    '#c8a882', // 温暖棕色
+                    '#e8d5c8'  // 粉米色
                 ],
                 frequency: 2,
                 speed: 0.05,
@@ -486,7 +608,7 @@
             siriWave.start();
 
             if (songs.length > 0) {
-                loadSong(currentSongIndex); 
+                loadSong(currentSongIndex);
             } else {
                 songTitle.textContent = "播放列表为空";
                 totalDurationDisplay.textContent = "0:00";
@@ -502,4 +624,5 @@
 
     </script>
 </body>
+
 </html>
