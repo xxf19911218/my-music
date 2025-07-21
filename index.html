@@ -126,6 +126,18 @@
             position: relative;
         }
 
+        .glass-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            z-index: -1; /* 确保在背景之上 */
+        }
+
         /* 自定义主要背景渐变 */
         .berry-bg {
             background: linear-gradient(135deg, #f4e8e0 0%, #e8d5c8 30%, #f0e6d6 70%, #e8d5c8 100%);
@@ -208,6 +220,7 @@
         <div class="p-6 space-y-4">
             <div class="aspect-square rounded-lg shadow-lg overflow-hidden">
                 <div id="albumArtDefaultContainer" class="w-full h-full flex items-center justify-center">
+                    <div class="glass-overlay"></div>
                     <!-- SiriWave.js will create and append its canvas here -->
                     <div id="loadingOverlay"
                         class="absolute inset-0 bg-white/70 backdrop-blur-sm hidden flex-col items-center justify-center text-secondary">
@@ -588,6 +601,12 @@
 
         window.addEventListener('load', () => {
             Howler.volume(parseFloat(volumeControl.value));
+
+            // 将 SiriWave 的 z-index 设置得比玻璃覆盖层高
+            const siriwaveContainer = document.querySelector('#albumArtDefaultContainer .siriwave-container');
+            if (siriwaveContainer) {
+                siriwaveContainer.style.zIndex = 2;
+            }
 
             siriWave = new SiriWave({
                 container: albumArtDefaultContainer,
