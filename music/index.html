@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MP3 播放器</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.4/howler.min.js"></script>
+    <script src="./siriwave.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            overscroll-behavior-y: contain;
+            /* Prevents pull-to-refresh on mobile when scrolling playlist */
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f4e8e0;
+            /* 温暖的粉米色 */
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #81c784;
+            /* 自然绿色 */
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #66bb6a;
+            /* 深一点的绿色 */
+        }
+
+        .song-item.active {
+            background: linear-gradient(135deg, #a8d5ba 0%, rgba(129, 199, 132, 0.3) 100%);
+            /* 绿色渐变 */
+            color: #2d5016;
+            /* 深绿色文字 */
+            font-weight: 500;
+        }
+
+        .music-note-icon {
+            font-size: 20px;
+            margin: 0 4px;
+            animation-name: jump;
+            animation-duration: 1.2s;
+            animation-timing-function: ease-in-out;
+            animation-iteration-count: infinite;
+            transform-origin: bottom;
+            display: inline-block;
+        }
+
+        @keyframes jump {
+
+            0%,
+            100% {
+                transform: translateY(0) scale(1);
+                opacity: 0.6;
+            }
+
+            50% {
+                transform: translateY(-20px) scale(1.2);
+                opacity: 1;
+            }
+        }
+
+        .music-note-icon:nth-child(1) {
+            color: #a8d5ba;
+            animation-delay: 0s;
+        }
+
+        /* 浅绿色 */
+        .music-note-icon:nth-child(2) {
+            color: #81c784;
+            animation-delay: 0.2s;
+        }
+
+        /* 中绿色 */
+        .music-note-icon:nth-child(3) {
+            color: #66bb6a;
+            animation-delay: 0.4s;
+        }
+
+        /* 深绿色 */
+        .music-note-icon:nth-child(4) {
+            color: #c8a882;
+            animation-delay: 0.6s;
+        }
+
+        /* 温暖棕色 */
+        .particle {
+            position: absolute;
+            border-radius: 50%;
+            pointer-events: none;
+            animation: bubble-effect 1s ease-out forwards;
+        }
+
+        @keyframes bubble-effect {
+            0% {
+                transform: translate(0, 0) scale(1);
+                opacity: 0.9;
+            }
+
+            100% {
+                transform: translate(var(--translateX), var(--translateY)) scale(0);
+                opacity: 0;
+            }
+        }
+
+        #albumArt {
+            object-fit: cover;
+            width: 100%;
+            height: 100%;
+        }
+
+        #albumArtDefaultContainer {
+            background: linear-gradient(135deg, #f4e8e0 0%, #e8d5c8 50%, #a8d5ba 100%);
+            /* 温暖渐变背景 */
+            position: relative;
+        }
+
+        .glass-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            z-index: -1;
+            /* 确保在背景之上 */
+        }
+
+        /* 自定义主要背景渐变 */
+        .berry-bg {
+            background: linear-gradient(135deg, #f4e8e0 0%, #e8d5c8 30%, #f0e6d6 70%, #e8d5c8 100%);
+        }
+
+        /* 播放器容器样式 */
+        .player-container {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        /* 进度条样式 */
+        #progressBar {
+            background: linear-gradient(90deg, #f4e8e0, #e8d5c8);
+            accent-color: #ebaca8;
+        }
+
+        /* 音量控制样式 */
+        #volumeControl {
+            background: linear-gradient(90deg, #f4e8e0, #e8d5c8);
+            accent-color: #81c784;
+        }
+
+        /* 播放按钮样式 */
+        .play-button {
+            background: linear-gradient(135deg, #8BC34A 0%, #607D8B 100%);
+            box-shadow: 0 0px 10px #9E9E9E;
+        }
+
+        .play-button:hover {
+            background: linear-gradient(135deg, #8BC34A 0%, #607D8B 100%);
+            box-shadow: 0 0px 10px #9E9E9E;
+        }
+
+        /* 其他按钮样式 */
+        .control-btn {
+            color: #bee1c6;
+            transition: all 0.2s;
+        }
+
+        .control-btn:hover {
+            color: #66bb6a;
+            background: rgba(129, 199, 132, 0.1);
+        }
+
+        /* 文字颜色调整 */
+        .text-primary {
+            color: #000000;
+        }
+
+        .text-secondary {
+            color: #000000;
+        }
+
+        .text-muted {
+            color: #a0a0a0;
+        }
+
+        /* 播放列表样式 */
+        .playlist-bg {
+            background: rgba(255, 255, 255, 0.4);
+        }
+
+        .song-item {
+            border-color: rgba(129, 199, 132, 0.2) !important;
+        }
+
+        .song-item:hover {
+            background: rgba(168, 213, 186, 0.2) !important;
+        }
+    </style>
+</head>
+
+<body
+    class="berry-bg text-primary flex flex-col items-center justify-center min-h-screen p-4 selection:bg-green-500 selection:text-white">
+
+    <div class="player-container shadow-2xl rounded-2xl w-full max-w-sm overflow-hidden">
+
+        <div class="p-6 space-y-4">
+            <div class="aspect-square rounded-lg shadow-lg overflow-hidden">
+                <div id="albumArtDefaultContainer" class="w-full h-full flex items-center justify-center">
+                    <div class="glass-overlay"></div>
+                    <!-- SiriWave.js will create and append its canvas here -->
+                    <div id="loadingOverlay"
+                        class="absolute inset-0 bg-white/70 backdrop-blur-sm hidden flex-col items-center justify-center text-secondary">
+                        <div class="flex">
+                            <i class="fas fa-music music-note-icon"></i>
+                            <i class="fas fa-music music-note-icon"></i>
+                            <i class="fas fa-music music-note-icon"></i>
+                            <i class="fas fa-music music-note-icon"></i>
+                        </div>
+                        <p class="mt-4 text-sm font-medium">正在加载...</p>
+                    </div>
+                </div>
+                <img id="albumArt" src="" alt="专辑封面" class="w-full h-full object-cover hidden"
+                    style="position: relative; z-index: 10;">
+            </div>
+            <div>
+                <h2 id="songTitle" class="text-2xl font-semibold text-center truncate text-primary" title="歌曲名称">歌曲名称
+                </h2>
+            </div>
+        </div>
+
+        <div class="px-6 space-y-2 relative">
+            <div id="particleContainer" class="absolute w-full h-full top-0 left-0 pointer-events-none"></div>
+            <input type="range" id="progressBar" value="0" class="w-full h-2 rounded-lg appearance-none cursor-pointer">
+            <div class="flex justify-between text-xs text-muted">
+                <span id="currentTime">0:00</span>
+                <span id="totalDuration">0:00</span>
+            </div>
+        </div>
+
+        <div class="flex items-center justify-around p-6">
+            <button id="prevBtn" class="control-btn p-3 rounded-full">
+                <i class="fas fa-backward-step fa-lg"></i>
+            </button>
+            <button id="playPauseBtn"
+                class="play-button text-white w-16 h-16 rounded-full flex items-center justify-center transition-all duration-200">
+                <i class="fas fa-play fa-xl"></i>
+            </button>
+            <button id="nextBtn" class="control-btn p-3 rounded-full">
+                <i class="fas fa-forward-step fa-lg"></i>
+            </button>
+        </div>
+
+        <div class="px-6 pb-6 flex items-center space-x-3">
+            <i class="fas fa-volume-down text-secondary"></i>
+            <input type="range" id="volumeControl" min="0" max="1" step="0.01" value="0.5"
+                class="w-full h-2 rounded-lg appearance-none cursor-pointer">
+            <i class="fas fa-volume-up text-secondary"></i>
+        </div>
+
+        <div class="border-t border-slate-300/30 p-3">
+            <h3 class="text-sm font-medium text-center text-secondary">播放列表</h3>
+        </div>
+
+        <div id="playlistContainer" class="h-40 overflow-y-auto playlist-bg">
+            {/* 播放列表项将由 JavaScript 在此创建 */}
+        </div>
+    </div>
+
+    <script>
+        // --- DOM Elements ---
+        const albumArtDefaultContainer = document.getElementById('albumArtDefaultContainer');
+        const albumArt = document.getElementById('albumArt');
+        const songTitle = document.getElementById('songTitle');
+        const progressBar = document.getElementById('progressBar');
+        const currentTimeDisplay = document.getElementById('currentTime');
+        const totalDurationDisplay = document.getElementById('totalDuration');
+        const prevBtn = document.getElementById('prevBtn');
+        const playPauseBtn = document.getElementById('playPauseBtn');
+        const playPauseIcon = playPauseBtn.querySelector('i');
+        const nextBtn = document.getElementById('nextBtn');
+        const volumeControl = document.getElementById('volumeControl');
+        const playlistContainer = document.getElementById('playlistContainer');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const particleContainer = document.getElementById('particleContainer');
+
+        // --- Player State ---
+        let sound;
+        let currentSongIndex = 0;
+        let isSeeking = false;
+        let siriWave;
+        let analyser;
+        let dataArray;
+        let isVisualizerSetup = false;
+        let frameCounter = 0;
+        const particleColors = ['#a8d5ba', '#81c784', '#66bb6a', '#c8a882', '#e8d5c8']; // 温暖自然色调
+
+        // --- Songs Data ---
+        const songsUrl = './'
+        const songs = [
+            { title: "FreeLoop", src: songsUrl + "Free_Loop.mp3", albumArt: "" },
+            { title: "ThatGirl", src: songsUrl + "That_Girl.mp3", albumArt: "" },
+            { title: "思念是一种病", src: songsUrl + "思念是一种病.mp3", albumArt: "" },
+            { title: "一生有你", src: songsUrl + "一生有你-水木年华.mp3", albumArt: "" },
+            { title: "下雨天", src: songsUrl + "下雨天-南拳妈妈.mp3", albumArt: "" },
+            { title: "世界が終るまでは", src: songsUrl + "世界が終るまでは.mp3", albumArt: "" },
+            { title: "光阴的故事", src: songsUrl + "光阴的故事-罗大佑.mp3", albumArt: "" },
+            { title: "凤凰花开的路口", src: songsUrl + "凤凰花开的路口-胡夏.mp3", albumArt: "" },
+            { title: "原来你也在这里", src: songsUrl + "原来你也在这里-刘若英.mp3", albumArt: "" },
+            { title: "和你一样", src: songsUrl + "和你一样-李宇春.mp3", albumArt: "" },
+            { title: "夜空中最亮的星", src: songsUrl + "夜空中最亮的星-逃跑计划.mp3", albumArt: "" },
+            { title: "往后余生", src: songsUrl + "往后余生-王贰浪.mp3", albumArt: "" },
+            { title: "忽然之间", src: songsUrl + "忽然之间-莫文蔚.mp3", albumArt: "" },
+            { title: "怎样", src: songsUrl + "怎样-戴佩妮.mp3", albumArt: "" },
+            { title: "成都", src: songsUrl + "成都-赵雷.mp3", albumArt: "" },
+            { title: "我很快乐", src: songsUrl + "我很快乐-刘惜君.mp3", albumArt: "" },
+            { title: "无地自容", src: songsUrl + "无地自容-黑豹乐队.mp3", albumArt: "" },
+            { title: "没那么简单", src: songsUrl + "没那么简单-黄小琥.mp3", albumArt: "" },
+            { title: "爱 很简单", src: songsUrl + "爱 很简单-陶喆.mp3", albumArt: "" },
+            { title: "白天不懂夜的黑", src: songsUrl + "白天不懂夜的黑-那英.mp3", albumArt: "" },
+            { title: "百年孤寂", src: songsUrl + "百年孤寂-王菲.mp3", albumArt: "" },
+            { title: "直到世界尽头", src: songsUrl + "直到世界尽头.mp3", albumArt: "" },
+            { title: "空空如也", src: songsUrl + "空空如也-任然.mp3", albumArt: "" },
+            { title: "说散就散", src: songsUrl + "说散就散-袁娅维.mp3", albumArt: "" },
+            { title: "起风了", src: songsUrl + "起风了-买辣椒也用券.mp3", albumArt: "" },
+            { title: "路过人间", src: songsUrl + "路过人间-郁可唯.mp3", albumArt: "" },
+            { title: "遇见", src: songsUrl + "遇见-孙燕姿.mp3", albumArt: "" },
+            { title: "遥远的你", src: songsUrl + "遥远的你-不靠谱组合.mp3", albumArt: "" }
+        ];
+
+        // --- Audio Analysis ---
+        function setupVisualizer() {
+            if (!Howler.ctx || isVisualizerSetup) return;
+            analyser = Howler.ctx.createAnalyser();
+
+            // Re-route the master gain through the analyser to ensure it gets the data
+            Howler.masterGain.disconnect();
+            Howler.masterGain.connect(analyser);
+            analyser.connect(Howler.ctx.destination);
+
+            analyser.fftSize = 256;
+            dataArray = new Uint8Array(analyser.frequencyBinCount);
+            isVisualizerSetup = true;
+        }
+
+        function updateWaveAmplitude() {
+            if (!sound || !sound.playing() || !isVisualizerSetup) return;
+
+            analyser.getByteFrequencyData(dataArray);
+            let sum = 0;
+            for (let i = 0; i < dataArray.length; i++) {
+                sum += dataArray[i];
+            }
+            const average = sum / dataArray.length;
+
+            // Map the average volume (0-255) to a suitable amplitude (0-1)
+            // Add a bit of a curve to make the response more noticeable
+            const amplitude = Math.pow(average / 255, 2) * 3;
+
+            siriWave.setAmplitude(Math.min(amplitude, 1)); // Cap at 1
+
+            requestAnimationFrame(updateWaveAmplitude);
+        }
+
+        function emitParticle() {
+            const particle = document.createElement('div');
+            particle.classList.add('particle');
+
+            const size = Math.floor(Math.random() * 4) + 2; // 2px to 6px
+            particle.style.width = `${size}px`;
+            particle.style.height = `${size}px`;
+
+            particle.style.backgroundColor = particleColors[Math.floor(Math.random() * particleColors.length)];
+
+            // Accurately calculate the thumb's center position
+            const thumbWidth = 16; // Approximate pixel width of the range thumb
+            const trackWidth = progressBar.offsetWidth;
+            const progressPercent = progressBar.value / progressBar.max;
+            const thumbPositionX = progressPercent * (trackWidth - thumbWidth) + (thumbWidth / 2);
+            const thumbPositionY = progressBar.offsetHeight / 2;
+
+            // Center the particle on the thumb's center, and shift slightly left for the "exhaust" effect
+            particle.style.left = `${thumbPositionX - (size / 2) + 10}px`;
+            particle.style.top = `${thumbPositionY - (size / 2)}px`;
+
+            // Randomize the particle's destination for a more natural effect
+            const randomX = (Math.random() - 0.75) * 40; // Skew to the left
+            const randomY = -(Math.random() * 20 + 20);
+            particle.style.setProperty('--translateX', `${randomX}px`);
+            particle.style.setProperty('--translateY', `${randomY}px`);
+
+            particleContainer.appendChild(particle);
+
+            setTimeout(() => {
+                particle.remove();
+            }, 1000); // Remove particle after animation (1s)
+        }
+
+        // --- Core Player Functions ---
+
+        function loadSong(songIndex, playOnLoad = false) {
+            if (songIndex < 0 || songIndex >= songs.length) return;
+
+            // Unload previous sound
+            if (sound) {
+                sound.unload();
+            }
+            if (siriWave) {
+                siriWave.setAmplitude(0);
+            }
+
+            loadingOverlay.classList.remove('hidden');
+            loadingOverlay.classList.add('flex');
+
+            currentSongIndex = songIndex;
+            const song = songs[songIndex];
+
+            albumArt.classList.add('hidden');
+            albumArtDefaultContainer.classList.remove('hidden');
+
+            songTitle.textContent = song.title;
+            songTitle.title = song.title;
+
+            // Handle Album Art
+            if (song.albumArt && song.albumArt.trim() !== "" && song.albumArt !== "NO_ART") {
+                albumArt.src = song.albumArt;
+                albumArt.onload = () => {
+                    albumArt.classList.remove('hidden');
+                    albumArtDefaultContainer.classList.add('hidden');
+                }
+                albumArt.onerror = () => {
+                    albumArt.classList.add('hidden');
+                    albumArtDefaultContainer.classList.remove('hidden');
+                }
+            } else {
+                albumArt.src = "";
+                albumArt.classList.add('hidden');
+                albumArtDefaultContainer.classList.remove('hidden');
+            }
+
+            sound = new Howl({
+                src: [song.src],
+                volume: parseFloat(volumeControl.value),
+                onload: () => {
+                    if (!isVisualizerSetup) {
+                        setupVisualizer();
+                    }
+                    loadingOverlay.classList.add('hidden');
+                    loadingOverlay.classList.remove('flex');
+                    totalDurationDisplay.textContent = formatTime(sound.duration());
+                    progressBar.max = sound.duration();
+                    progressBar.value = 0;
+                    currentTimeDisplay.textContent = formatTime(0);
+                    if (playOnLoad) playSong();
+                },
+                onplay: () => {
+                    playPauseIcon.classList.remove('fa-play');
+                    playPauseIcon.classList.add('fa-pause');
+                    requestAnimationFrame(updateProgress);
+                    requestAnimationFrame(updateWaveAmplitude); // Start the animation loop
+                },
+                onpause: () => {
+                    playPauseIcon.classList.remove('fa-pause');
+                    playPauseIcon.classList.add('fa-play');
+                    if (siriWave) siriWave.setAmplitude(0);
+                },
+                onend: () => {
+                    playPauseIcon.classList.remove('fa-pause');
+                    playPauseIcon.classList.add('fa-play');
+                    if (siriWave) siriWave.setAmplitude(0);
+                    nextSong();
+                },
+                onloaderror: (id, err) => {
+                    loadingOverlay.classList.add('hidden');
+                    loadingOverlay.classList.remove('flex');
+                    console.error("Howler load error:", err);
+                    songTitle.textContent = "加载失败";
+                    if (siriWave) siriWave.setAmplitude(0);
+                }
+            });
+
+            updatePlaylistHighlight();
+        }
+
+        function playSong() {
+            if (!sound) { // If no sound is loaded, load the first one
+                loadSong(currentSongIndex, true);
+                return;
+            }
+            if (!sound.playing()) {
+                sound.play();
+            }
+        }
+
+        function pauseSong() {
+            if (sound && sound.playing()) {
+                sound.pause();
+            }
+        }
+
+        function togglePlayPause() {
+            if (!sound) {
+                playSong(); // Will load and then play
+            } else if (sound.playing()) {
+                pauseSong();
+            } else {
+                playSong();
+            }
+        }
+
+        function prevSong() {
+            let newIndex = (currentSongIndex - 1 + songs.length) % songs.length;
+            loadSong(newIndex, true);
+        }
+
+        function nextSong() {
+            let newIndex = (currentSongIndex + 1) % songs.length;
+            loadSong(newIndex, true);
+        }
+
+        function updateProgress() {
+            if (sound && sound.playing() && !isSeeking) {
+                const seek = sound.seek() || 0;
+                currentTimeDisplay.textContent = formatTime(seek);
+                progressBar.value = seek;
+
+                frameCounter++;
+                if (frameCounter % 8 === 0) { // Emit particle every 8 frames to reduce density
+                    emitParticle();
+                }
+
+                requestAnimationFrame(updateProgress); // Continue the loop
+            }
+        }
+
+        function setProgress() {
+            if (sound) {
+                sound.seek(parseFloat(progressBar.value));
+            }
+        }
+
+        function setVolume() {
+            Howler.volume(parseFloat(volumeControl.value));
+        }
+
+        function formatTime(seconds) {
+            const minutes = Math.floor(seconds / 60) || 0;
+            const secs = Math.floor(seconds % 60) || 0;
+            return `${minutes}:${secs < 10 ? '0' : ''}${secs}`;
+        }
+
+        function renderPlaylist() {
+            playlistContainer.innerHTML = '';
+            if (songs.length === 0) {
+                playlistContainer.innerHTML = '<p class="text-secondary p-4 text-center">播放列表为空。</p>';
+                return;
+            }
+            songs.forEach((song, index) => {
+                const div = document.createElement('div');
+                div.classList.add('song-item', 'p-3', 'cursor-pointer', 'border-b', 'text-sm', 'transition-colors', 'truncate');
+                div.textContent = song.title;
+                div.title = song.title;
+
+                div.addEventListener('click', () => {
+                    loadSong(index, true);
+                });
+                playlistContainer.appendChild(div);
+            });
+            updatePlaylistHighlight();
+        }
+
+        function updatePlaylistHighlight() {
+            const songItems = playlistContainer.querySelectorAll('.song-item');
+            songItems.forEach((item, index) => {
+                item.classList.toggle('active', index === currentSongIndex);
+            });
+        }
+
+        // --- Event Listeners ---
+        playPauseBtn.addEventListener('click', togglePlayPause);
+        prevBtn.addEventListener('click', prevSong);
+        nextBtn.addEventListener('click', nextSong);
+
+        progressBar.addEventListener('change', setProgress);
+        progressBar.addEventListener('mousedown', () => { isSeeking = true; });
+        progressBar.addEventListener('mouseup', () => { isSeeking = false; });
+
+        volumeControl.addEventListener('input', setVolume);
+
+        window.addEventListener('load', () => {
+            Howler.volume(parseFloat(volumeControl.value));
+
+            // 将 SiriWave 的 z-index 设置得比玻璃覆盖层高
+            const siriwaveContainer = document.querySelector('#albumArtDefaultContainer .siriwave-container');
+            if (siriwaveContainer) {
+                siriwaveContainer.style.zIndex = 2;
+            }
+
+            siriWave = new SiriWave({
+                container: albumArtDefaultContainer,
+                width: albumArtDefaultContainer.offsetWidth,
+                height: albumArtDefaultContainer.offsetHeight,
+                colors: [
+                    '#a8d5ba', // 浅绿色
+                    '#81c784', // 中绿色
+                    '#66bb6a', // 深绿色
+                    '#c8a882', // 温暖棕色
+                    '#e8d5c8'  // 粉米色
+                ],
+                frequency: 2,
+                speed: 0.05,
+                amplitude: 0,
+                cover: true
+            });
+            siriWave.start();
+
+            if (songs.length > 0) {
+                loadSong(currentSongIndex);
+            } else {
+                songTitle.textContent = "播放列表为空";
+                totalDurationDisplay.textContent = "0:00";
+            }
+            renderPlaylist();
+        });
+
+        window.addEventListener('resize', () => {
+            // The siriwave library doesn't have a built-in resize handler,
+            // so for a truly responsive solution, it would need to be destroyed and recreated.
+            // For now, we'll leave it as is.
+        });
+
+    </script>
+</body>
+
+</html>
